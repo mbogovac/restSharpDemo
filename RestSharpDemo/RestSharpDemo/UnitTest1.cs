@@ -4,6 +4,7 @@ using NUnit.Framework;
 using RestSharp;
 using RestSharpDemo.Model;
 using System;
+using System.Threading.Tasks;
 
 namespace RestSharpDemo
 {
@@ -51,12 +52,53 @@ namespace RestSharpDemo
 
             request.RequestFormat = DataFormat.Json;
 
-            request.AddBody(new Posts() { id = "13", author = "Del Boy", title = "RestSharp Course"});
+            request.AddBody(new Posts() { id = "17", author = "Tom", title = "RestSharp Course"});
 
-            var response = client.Execute(request);
+            var response = client.Execute<Posts>(request);
 
-            JObject obs = JObject.Parse(response.Content);
-            Assert.That(obs["author"].ToString(), Is.EqualTo("Del Boy"), "Name is not correct");
+            //JObject obs = JObject.Parse(response.Content);
+
+            Assert.That(response.Data.author, Is.EqualTo("Tom"), "Name is not correct");
         }
+
+        [Test]
+        public async void PostWithAsync()
+        {
+            var client = new RestClient("http://localhost:3000/");
+
+            var request = new RestRequest("posts", Method.Post);
+
+            request.RequestFormat = DataFormat.Json;
+
+            request.AddBody(new Posts() { id = "17", author = "Tom", title = "RestSharp Course" });
+
+            var response = client.Execute<Posts>(request);
+
+            
+
+            //JObject obs = JObject.Parse(response.Content);
+
+            Assert.That(response.Data.author, Is.EqualTo("Tom"), "Name is not correct");
+        }
+
+        private async Task<RestResponse<T>> ExecuteAsyncRequest<T>(RestClient client, RestRequest request) where T:class, new()
+        {
+            //var response = await client.ExecuteAsync<T>(request);
+
+            var taskCompletionSource = new TaskCompletionSource<RestResponse<T>>();
+            
+            client.ExecuteAsync<T>(request, restResponse =>
+            {
+                if(restResponse.ErrorException != null)
+                {
+                    const string message = "Error retrieving response";
+                    throw new ApplicationException(message, restResponse.ErrorException);
+                }
+
+                taskCompletionSource.SetResult(restResponse);
+            });
+            return await taskCompletionSource.Task;
+        }
+
     }
 }
